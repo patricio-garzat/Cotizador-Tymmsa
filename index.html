@@ -4,7 +4,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   /* ============================================================
@@ -218,6 +217,26 @@
     color: var(--text);
     margin-bottom: 5px;
   }
+  .panel-title-row{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap: 12px;
+  }
+  .panel-title-row .panel-title{ margin-bottom: 5px; }
+  .btn-panel-reset{
+    appearance:none;
+    border:none;
+    background:none;
+    padding:0;
+    font-family: var(--font-body);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--accent);
+    text-decoration: underline;
+    cursor:pointer;
+    white-space: nowrap;
+  }
   .panel-hint{
     font-size: 13.5px;
     color: var(--text-muted);
@@ -340,6 +359,7 @@
   }
   @media (max-width: 560px){
     .other-grid{ grid-template-columns: 1fr; }
+    .add-partida-grid{ grid-template-columns: 1fr; }
   }
   .other-field label{
     display:block;
@@ -351,7 +371,10 @@
   .other-field label .label-hint{ font-weight: 400; color: var(--text-faint); }
   .other-field .field input{ padding: 12px 14px; }
   .other-field .field.with-prefix input{ padding-left: 24px; }
-  .other-field .field .prefix{
+  /* Regla general: cualquier .field.with-prefix necesita esto, no solo
+     los que viven dentro de .other-field (ej. precio ajustado, descripción
+     de partida). */
+  .field .prefix{
     position:absolute; left: 13px; top:50%; transform:translateY(-50%);
     font-family: var(--font-mono); font-size: 15px; color: var(--text-faint);
   }
@@ -435,79 +458,6 @@
   }
   .form-alert.show{ display:flex; }
 
-  /* ---------- AI drawing analysis ---------- */
-  .ai-drawing{ margin-bottom: 26px; }
-  .ai-drawing.is-loading .ai-dropzone{ pointer-events:none; opacity: 0.6; }
-  .ai-title{
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--text-muted);
-    margin-bottom: 9px;
-  }
-  .ai-check{
-    font-size: 12.5px;
-    color: var(--text-faint);
-    padding: 12px 2px;
-  }
-  .ai-dropzone{
-    display:flex;
-    align-items:center;
-    gap: 12px;
-    border: 1.5px dashed var(--border-strong);
-    border-radius: var(--radius-input);
-    background: var(--surface-sunken);
-    padding: 16px 18px;
-    cursor: pointer;
-    transition: border-color .15s ease, background .15s ease;
-  }
-  .ai-dropzone:hover, .ai-dropzone.is-dragover{
-    border-color: var(--accent);
-    background: var(--accent-soft);
-  }
-  .ai-icon{ flex: 0 0 auto; width: 20px; height: 20px; color: var(--accent); }
-  .ai-dropzone-text{ font-size: 13.5px; font-weight: 500; color: var(--text); }
-  .ai-dropzone-hint{ font-size: 12px; color: var(--text-faint); margin-left: auto; white-space: nowrap; }
-  .visually-hidden{
-    position:absolute; width:1px; height:1px; padding:0; margin:-1px;
-    overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
-  }
-  .ai-status{
-    display:flex;
-    align-items:flex-start;
-    gap: 10px;
-    border-radius: var(--radius-input);
-    padding: 12px 14px;
-    margin-top: 10px;
-    font-size: 13px;
-  }
-  .ai-status.loading{ background: var(--accent-soft); color: var(--accent); }
-  .ai-status.success{ background: var(--accent-soft); color: var(--text); }
-  .ai-status.error{ background: var(--error-soft); color: var(--error); }
-  .ai-status-body{ flex: 1 1 auto; min-width:0; }
-  .ai-status-title{ font-weight: 600; margin-bottom: 2px; }
-  .ai-status-note{ color: var(--text-muted); font-size: 12.5px; margin-top: 2px; }
-  .ai-status.error .ai-status-note{ color: var(--error); }
-  .ai-status-actions{ display:flex; gap: 10px; margin-top: 8px; }
-  .ai-status-action{
-    appearance:none; border:none; background:none; padding:0;
-    font: inherit; font-weight: 600; font-size: 12.5px;
-    color: inherit; text-decoration: underline;
-    cursor: pointer;
-  }
-  .ai-spinner{
-    flex: 0 0 auto;
-    width: 16px; height: 16px;
-    margin-top: 1px;
-    border-radius: 50%;
-    border: 2px solid var(--accent-ring);
-    border-top-color: var(--accent);
-    animation: ai-spin .7s linear infinite;
-  }
-  @keyframes ai-spin{ to{ transform: rotate(360deg); } }
-  .field.detected input, .stepper.detected{
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-ring);
-  }
 
   .btn-calc{
     appearance:none;
@@ -701,7 +651,7 @@
     font-size: 15px;
     color: var(--text);
   }
-  .partida-remove{
+  .partida-edit, .partida-remove{
     appearance:none;
     border:none;
     background:none;
@@ -709,10 +659,11 @@
     font: inherit;
     font-size: 12px;
     font-weight: 600;
-    color: var(--error);
     text-decoration: underline;
     cursor:pointer;
   }
+  .partida-edit{ color: var(--accent); }
+  .partida-remove{ color: var(--error); }
   .partida-desc{ margin-bottom: 12px; }
   .partida-meta-grid{ margin-top: 0; }
 
@@ -775,6 +726,42 @@
   }
 
   [hidden]{ display:none !important; }
+
+  /* ---------- mobile ---------- */
+  @media (max-width: 560px){
+    .app{ padding: 24px 14px 56px; }
+    .panel{ padding: 20px 16px 24px; border-radius: 16px; }
+
+    .topbar{
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 16px;
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+    }
+    .topbar-actions{ width: 100%; justify-content: center; }
+    .brand-logo{ width: 240px; }
+
+    /* La tabla ID/OD/Alcance se aprieta demasiado en 3 columnas — se
+       encoge la columna de etiqueta y se le da todo el resto a los
+       campos de Inicial/Final, que son los que se necesitan escribir. */
+    .dim-grid{
+      grid-template-columns: 50px 1fr 1fr;
+      column-gap: 8px;
+      row-gap: 12px;
+    }
+    .dim-label{ font-size: 12.5px; }
+    .dim-label small{ display: none; }
+    .dim-head{ font-size: 10px; }
+    .field input{ padding: 11px 26px 11px 10px; font-size: 14px; }
+    .field .unit{ right: 8px; font-size: 10.5px; }
+
+    .headline.time .value{ font-size: 38px; }
+    .headline.price .value{ font-size: 40px; }
+
+    .partida-row-top{ flex-wrap: wrap; row-gap: 8px; }
+  }
 
   @media (prefers-reduced-motion: reduce){
     *{ transition: none !important; animation: none !important; }
@@ -849,18 +836,6 @@
       <div class="panel-hint">Dimensiones tal como llega la forja y cómo debe quedar terminada.</div>
 
       <form id="quoteForm" novalidate>
-
-        <div class="ai-drawing" id="aiDrawing">
-          <div class="ai-title">Leer dimensiones de un dibujo</div>
-          <div class="ai-check" id="aiCheck">Comprobando disponibilidad del análisis con IA…</div>
-          <label class="ai-dropzone" id="aiDropzone" hidden>
-            <svg class="ai-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
-            <span class="ai-dropzone-text">Arrastra el dibujo aquí o haz clic para subirlo</span>
-            <span class="ai-dropzone-hint" id="aiHint">JPG, PNG, WEBP o PDF</span>
-            <input type="file" id="aiFileInput" class="visually-hidden">
-          </label>
-          <div class="ai-status" id="aiStatus" hidden></div>
-        </div>
 
         <div class="unit-toggle-row">
           <span class="unit-toggle-label">Unidades de ID / OD</span>
@@ -1034,7 +1009,10 @@
 
   <!-- ================= COTIZACIÓN / PDF ================= -->
   <section class="panel quote-panel">
-    <div class="panel-title">Datos de la cotización</div>
+    <div class="panel-title-row">
+      <div class="panel-title">Datos de la cotización</div>
+      <button type="button" class="btn-panel-reset" id="btnResetQuoteData">Restablecer</button>
+    </div>
     <div class="panel-hint">Se usan para armar el PDF con el formato de Tymmsa. Los precios vienen de las partidas de arriba.</div>
 
     <div class="quote-grid">
@@ -1388,7 +1366,6 @@ const MaquinadoFormulas = {
     fieldIds.forEach(id => { inputs[id].value = id === 'horasExtra' ? '0' : ''; });
     if (diameterUnit !== 'in') setDiameterUnit('in');
     clearFieldErrors();
-    resetAiStatus();
     lastCosto = null;
     priceOverride = null;
     document.getElementById('precioAjustado').value = '';
@@ -1452,320 +1429,7 @@ const MaquinadoFormulas = {
   // el precio/hora, las horas extra o cualquier otro campo.
   fieldIds.forEach(id => {
     inputs[id].addEventListener('input', tryLiveRecalc);
-    inputs[id].addEventListener('input', () => clearDetected(id));
   });
-
-  /* ================================================================
-     ANÁLISIS DE DIBUJO CON IA — capacidad "sample" del Artifact.
-     Lee una foto/captura del plano y llena los campos de dimensiones.
-     Se oculta por completo si esta capacidad no está disponible en el
-     visor; nunca calcula la cotización por sí sola — sólo llena
-     campos, marcados como "detectado", para que el usuario los revise.
-     ================================================================ */
-  const aiDrawing = document.getElementById('aiDrawing');
-  const aiCheck = document.getElementById('aiCheck');
-  const aiDropzone = document.getElementById('aiDropzone');
-  const aiFileInput = document.getElementById('aiFileInput');
-  const aiHint = document.getElementById('aiHint');
-  const aiStatus = document.getElementById('aiStatus');
-
-  let sampleFn = null;
-  let aiImageCaps = null;
-  let aiAbortController = null;
-
-  const AI_ERROR_COPY = {
-    invalid_request: 'No se pudo preparar la solicitud. Intenta con otra imagen.',
-    prompt_too_large: 'La imagen es muy grande para procesarla. Prueba con un recorte más chico.',
-    image_rejected: 'Ese archivo no es una imagen válida o pesa demasiado. Prueba con un JPG o PNG.',
-    rate_limited: 'Demasiadas solicitudes. Espera un momento e inténtalo de nuevo.',
-    session_expired: 'Tu sesión expiró. Vuelve a iniciar sesión e inténtalo de nuevo.',
-    refused: 'No se pudo leer este dibujo. Prueba con una imagen más clara o más de cerca.',
-    empty_completion: 'No se obtuvo respuesta. Intenta de nuevo.',
-    invalid_json: 'No se pudieron interpretar los datos del dibujo. Intenta de nuevo o llena los campos a mano.',
-    upstream_error: 'Hubo un problema temporal. Intenta de nuevo.',
-    transform_error: 'No se pudo procesar la imagen. Intenta con otro archivo.',
-    queue_overflow: 'Demasiadas solicitudes seguidas. Espera un momento.',
-  };
-  const AI_HIDE_CODES = new Set(['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed']);
-
-  // No ocultamos el bloque por completo: dejamos un motivo visible en
-  // "aiCheck" para poder diagnosticar por qué no está disponible, en
-  // lugar de que la función desaparezca sin explicación.
-  function setAiHidden(reason){
-    aiDropzone.hidden = true;
-    aiCheck.hidden = false;
-    aiCheck.textContent = 'Lectura de dibujos con IA no disponible en esta sesión' + (reason ? ' (' + reason + ').' : '.');
-  }
-
-  function escapeHtml(str){
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
-
-  function renderAiStatus(kind, opts){
-    opts = opts || {};
-    if (kind === 'none'){ aiStatus.hidden = true; aiStatus.className = 'ai-status'; aiStatus.innerHTML = ''; return; }
-    aiStatus.hidden = false;
-    aiStatus.className = 'ai-status ' + kind;
-    if (kind === 'loading'){
-      aiStatus.innerHTML =
-        '<span class="ai-spinner"></span>' +
-        '<div class="ai-status-body"><div class="ai-status-title">Analizando dibujo…</div>' +
-        '<div class="ai-status-actions"><button type="button" class="ai-status-action" id="aiCancelBtn">Cancelar</button></div></div>';
-      document.getElementById('aiCancelBtn').addEventListener('click', () => {
-        if (aiAbortController) aiAbortController.abort();
-      });
-    } else if (kind === 'success'){
-      const noteHtml = opts.notas ? `<div class="ai-status-note">${escapeHtml(opts.notas)}</div>` : '';
-      aiStatus.innerHTML =
-        `<div class="ai-status-body"><div class="ai-status-title">${opts.count} de 7 campos completados desde el dibujo</div>` +
-        noteHtml +
-        `<div class="ai-status-note">Revisa los valores resaltados y presiona “Calcular cotización”.</div></div>`;
-    } else if (kind === 'error'){
-      aiStatus.innerHTML =
-        `<div class="ai-status-body"><div class="ai-status-title">No se pudo analizar el dibujo</div>` +
-        `<div class="ai-status-note">${escapeHtml(opts.message || 'Intenta de nuevo.')}</div></div>`;
-    }
-  }
-
-  function markDetected(id){ inputs[id].closest('.field, .stepper').classList.add('detected'); }
-  function clearDetected(id){ inputs[id].closest('.field, .stepper').classList.remove('detected'); }
-
-  function mmToIn(mm){ return mm / 25.4; }
-  function inToMmVal(inch){ return inch * 25.4; }
-  function lbToKg(lb){ return lb * 0.45359237; }
-
-  function normalizeToIn(valor, unidad){
-    if (unidad === 'in') return valor;
-    if (unidad === 'mm') return mmToIn(valor);
-    return null;
-  }
-  function normalizeToMm(valor, unidad){
-    if (unidad === 'mm') return valor;
-    if (unidad === 'in') return inToMmVal(valor);
-    return null;
-  }
-  function normalizeToKg(valor, unidad){
-    if (unidad === 'kg') return valor;
-    if (unidad === 'lb') return lbToKg(valor);
-    return null;
-  }
-
-  // Cada campo detectable y su tipo de unidad. Los campos "diameter"
-  // siguen la unidad activa del selector (in/mm) en vez de una unidad fija.
-  const AI_FIELD_MAP = [
-    ['odInicial', 'diameter'],
-    ['odFinal', 'diameter'],
-    ['idInicial', 'diameter'],
-    ['idFinal', 'diameter'],
-    ['largoInicial', 'length'],
-    ['largoFinal', 'length'],
-    ['peso', 'mass'],
-  ];
-
-  function applyDetectedValues(data){
-    let count = 0;
-    AI_FIELD_MAP.forEach(([fieldId, kind]) => {
-      const item = data && data[fieldId];
-      if (!item || typeof item.valor !== 'number' || !Number.isFinite(item.valor) || item.valor < 0 || !item.unidad) return;
-
-      let norm = null, decimals = 1;
-      if (kind === 'diameter'){
-        const inches = normalizeToIn(item.valor, item.unidad);
-        if (inches === null) return;
-        norm = diameterUnit === 'in' ? inches : inches * 25.4;
-        decimals = diameterUnit === 'in' ? 3 : 1;
-      } else if (kind === 'length'){
-        norm = normalizeToMm(item.valor, item.unidad);
-      } else if (kind === 'mass'){
-        norm = normalizeToKg(item.valor, item.unidad);
-      }
-
-      if (norm !== null && Number.isFinite(norm) && norm >= 0){
-        inputs[fieldId].value = norm.toFixed(decimals);
-        markDetected(fieldId);
-        count++;
-      }
-    });
-    return count;
-  }
-
-  const AI_PROMPT = `Eres un asistente que lee dibujos técnicos (planos) de piezas forjadas que van a maquinarse. El dibujo puede incluir las cotas principales de la pieza terminada y, a veces, un recuadro o tabla aparte con las dimensiones de la forja en bruto (antes de maquinar) — por ejemplo etiquetas como "FF", "MF", "Forja".
-
-De la o las imágenes adjuntas, identifica dos juegos de medidas:
-1. INICIAL: la forja en bruto, antes de maquinar. Normalmente tiene el OD más grande, el ID más chico (o sin barrenar) y el alcance/longitud más largo que la pieza final. Si el dibujo trae un recuadro de forja aparte, úsalo para este juego.
-2. FINAL: la pieza ya maquinada, como debe quedar — normalmente son las cotas principales dibujadas sobre la pieza (diámetro exterior, diámetro interior, longitud o altura total).
-
-También busca el peso o masa de la pieza si aparece (a veces como "Masa (Kg)").
-
-Reporta cada medida exactamente como aparece en el dibujo, junto con su unidad tal cual (mm, in, kg o lb) — NO conviertas unidades tú mismo, eso lo hace la aplicación.
-
-Responde ÚNICAMENTE con un JSON con esta forma exacta. Usa null en los campos que no puedas determinar con confianza:
-{
-  "odInicial": {"valor": number, "unidad": "mm" | "in"} | null,
-  "odFinal": {"valor": number, "unidad": "mm" | "in"} | null,
-  "idInicial": {"valor": number, "unidad": "mm" | "in"} | null,
-  "idFinal": {"valor": number, "unidad": "mm" | "in"} | null,
-  "largoInicial": {"valor": number, "unidad": "mm" | "in"} | null,
-  "largoFinal": {"valor": number, "unidad": "mm" | "in"} | null,
-  "peso": {"valor": number, "unidad": "kg" | "lb"} | null,
-  "notas": string
-}
-"notas" es una sola frase (o cadena vacía) explicando cualquier ambigüedad o supuesto que hiciste, por ejemplo si tomaste el peso de una fila específica del recuadro de forja.`;
-
-  // Convierte la primera página de un PDF a una imagen PNG (Blob) usando
-  // pdf.js, para que pueda enviarse a la capacidad "sample" igual que
-  // cualquier foto o captura — la capacidad sólo acepta imágenes.
-  function canvasToBlob(canvas){
-    return new Promise((resolve, reject) => {
-      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('No se pudo generar la imagen del PDF.')), 'image/png');
-    });
-  }
-
-  async function renderPdfFirstPageToFile(file){
-    if (!window.pdfjsLib) throw new Error('pdf.js no disponible');
-    if (!window.pdfjsLib.GlobalWorkerOptions.workerSrc){
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-    }
-    const buffer = await file.arrayBuffer();
-    const pdf = await window.pdfjsLib.getDocument({ data: buffer }).promise;
-    const page = await pdf.getPage(1);
-    const targetWidth = 1600;
-    const baseViewport = page.getViewport({ scale: 1 });
-    const scale = targetWidth / baseViewport.width;
-    const viewport = page.getViewport({ scale: scale > 0 ? scale : 1 });
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(viewport.width);
-    canvas.height = Math.round(viewport.height);
-    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-    const blob = await canvasToBlob(canvas);
-    return {
-      file: new File([blob], (file.name || 'dibujo').replace(/\.pdf$/i, '') + '.png', { type: 'image/png' }),
-      multiPage: pdf.numPages > 1,
-    };
-  }
-
-  // Acepta imágenes directamente y convierte cualquier PDF a imagen antes
-  // de mandarlo a analizar — así el usuario puede subir el archivo tal
-  // como lo recibió del cliente, sea foto, captura o PDF.
-  async function prepareFiles(fileList){
-    const raw = Array.from(fileList);
-    const prepared = [];
-    let hadMultiPagePdf = false;
-    let pdfFailed = false;
-    for (const f of raw){
-      if (prepared.length >= aiImageCaps.maxCount) break;
-      if (f.type === 'application/pdf'){
-        try{
-          const { file, multiPage } = await renderPdfFirstPageToFile(f);
-          prepared.push(file);
-          if (multiPage) hadMultiPagePdf = true;
-        } catch(err){
-          pdfFailed = true;
-        }
-      } else if (aiImageCaps.mediaTypes.includes(f.type)){
-        prepared.push(f);
-      }
-    }
-    return { prepared, hadMultiPagePdf, pdfFailed };
-  }
-
-  async function analyzeDrawing(fileList){
-    if (!sampleFn || !aiImageCaps) return;
-
-    aiDrawing.classList.add('is-loading');
-    renderAiStatus('loading');
-
-    let prepared, hadMultiPagePdf, pdfFailed;
-    try{
-      ({ prepared, hadMultiPagePdf, pdfFailed } = await prepareFiles(fileList));
-    } catch(err){
-      aiDrawing.classList.remove('is-loading');
-      renderAiStatus('error', { message: 'No se pudo leer el archivo. Intenta con otro PDF o una imagen.' });
-      return;
-    }
-
-    if (!prepared.length){
-      aiDrawing.classList.remove('is-loading');
-      renderAiStatus('error', {
-        message: pdfFailed
-          ? 'No se pudo leer ese PDF. Prueba exportando el plano como imagen (PNG/JPG) y súbelo así.'
-          : 'Elige un archivo JPG, PNG, WEBP o PDF.',
-      });
-      return;
-    }
-
-    aiAbortController = new AbortController();
-
-    try{
-      const data = await sampleFn.json(AI_PROMPT, {
-        images: prepared,
-        modelTier: 'complex',
-        signal: aiAbortController.signal,
-      });
-      const count = applyDetectedValues(data || {});
-      if (count > 0){
-        clearFieldErrors();
-        tryLiveRecalc();
-        const notas = [data && data.notas, hadMultiPagePdf ? 'Se analizó sólo la primera página del PDF.' : null]
-          .filter(Boolean).join(' ');
-        renderAiStatus('success', { count, notas });
-      } else {
-        renderAiStatus('error', { message: 'No se reconocieron medidas en el dibujo. Prueba con una imagen más clara o llena los campos a mano.' });
-      }
-    } catch(e){
-      if (e && e.code === 'cancelled'){
-        renderAiStatus('none');
-      } else if (e && AI_HIDE_CODES.has(e.code)){
-        setAiHidden(e.code);
-      } else {
-        const message = (e && AI_ERROR_COPY[e.code]) || 'No se pudo analizar el dibujo. Intenta de nuevo.';
-        renderAiStatus('error', { message });
-      }
-    } finally {
-      aiDrawing.classList.remove('is-loading');
-    }
-  }
-
-  aiFileInput.addEventListener('change', (e) => {
-    const files = e.target.files;
-    if (files && files.length) analyzeDrawing(files);
-    e.target.value = '';
-  });
-  aiDropzone.addEventListener('dragover', (e) => { e.preventDefault(); aiDropzone.classList.add('is-dragover'); });
-  aiDropzone.addEventListener('dragleave', () => aiDropzone.classList.remove('is-dragover'));
-  aiDropzone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    aiDropzone.classList.remove('is-dragover');
-    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length){
-      analyzeDrawing(e.dataTransfer.files);
-    }
-  });
-
-  function resetAiStatus(){
-    fieldIds.forEach(clearDetected);
-    renderAiStatus('none');
-    if (aiAbortController) aiAbortController.abort();
-  }
-
-  (async function initAi(){
-    try{
-      if (!window.claude || !window.claude.use){ setAiHidden('entorno fuera del visor de Claude'); return; }
-      sampleFn = await window.claude.use('sample');
-      if (!sampleFn){ setAiHidden('capacidad no concedida a esta vista'); return; }
-      const limits = await sampleFn.limits().catch(() => null);
-      aiImageCaps = limits && limits.images ? limits.images : null;
-      if (!aiImageCaps){ setAiHidden('este visor no admite imágenes'); return; }
-      aiFileInput.accept = aiImageCaps.mediaTypes.concat(['application/pdf']).join(',');
-      aiFileInput.multiple = aiImageCaps.maxCount > 1;
-      aiHint.textContent = aiImageCaps.maxCount > 1 ? 'JPG, PNG, WEBP o PDF — puedes subir varias' : 'JPG, PNG, WEBP o PDF';
-      aiCheck.hidden = true;
-      aiDropzone.hidden = false;
-    } catch(err){
-      setAiHidden('error al inicializar');
-    }
-  })();
 
   /* ================================================================
      MODO CLARO / OSCURO
@@ -1848,6 +1512,13 @@ Responde ÚNICAMENTE con un JSON con esta forma exacta. Usa null en los campos q
     quoteInputs.folio.value = quoteInputs.folio.value.replace(/[^0-9]/g, '');
   });
 
+  // Limpia solo esta sección (folio, fecha, cliente, vendedor) — no toca
+  // las partidas ni el formulario de la pieza.
+  document.getElementById('btnResetQuoteData').addEventListener('click', () => {
+    quoteFields.forEach(id => { quoteInputs[id].value = ''; });
+    try { quoteInputs.fecha.value = new Date().toISOString().slice(0, 10); } catch(e){}
+  });
+
   /* ================================================================
      PARTIDAS — una cotización de Tymmsa puede tener varias partidas
      (piezas o servicios distintos), cada una con su propia descripción,
@@ -1884,6 +1555,17 @@ Responde ÚNICAMENTE con un JSON con esta forma exacta. Usa null en los campos q
     return div.innerHTML.replace(/"/g, '&quot;');
   }
 
+  // Precio unitario: redondeado a 2 decimales y con separador de miles,
+  // como cualquier cantidad de dinero normal (ej. "2,824.81").
+  function formatMiles(n){
+    const num = Number.isFinite(n) ? n : 0;
+    return num.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function parseMilesInput(str){
+    const n = parseFloat(String(str).replace(/[^0-9.]/g, ''));
+    return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : 0;
+  }
+
   function updatePartidasTotal(){
     partidasCountEl.textContent = partidas.length;
     partidasPluralSEl.textContent = partidas.length === 1 ? '' : 's';
@@ -1902,6 +1584,7 @@ Responde ÚNICAMENTE con un JSON con esta forma exacta. Usa null en los campos q
         <div class="partida-row-top">
           <span class="partida-num">Partida ${idx + 1}</span>
           <span class="partida-subtotal">${mxn.format(partidaSubtotal(p))}</span>
+          <button type="button" class="partida-edit">Editar</button>
           <button type="button" class="partida-remove">Quitar</button>
         </div>
         <div class="field with-prefix partida-desc">
@@ -1915,7 +1598,7 @@ Responde ÚNICAMENTE con un JSON con esta forma exacta. Usa null en los campos q
           </div>
           <div class="other-field">
             <label>Precio unitario</label>
-            <div class="field with-prefix"><span class="prefix">$</span><input type="number" inputmode="decimal" min="0" step="0.01" class="partida-input" data-field="precioUnitario" value="${p.precioUnitario}"></div>
+            <div class="field with-prefix"><span class="prefix">$</span><input type="text" inputmode="decimal" class="partida-input" data-field="precioUnitario" value="${formatMiles(p.precioUnitario)}"></div>
           </div>
           <div class="other-field">
             <label>Tiempo de entrega</label>
@@ -1925,20 +1608,20 @@ Responde ÚNICAMENTE con un JSON con esta forma exacta. Usa null en los campos q
       `;
       partidasListEl.appendChild(row);
 
+      row.querySelector('.partida-edit').addEventListener('click', () => editarPartida(p));
       row.querySelector('.partida-remove').addEventListener('click', () => {
         partidas = partidas.filter(x => x.id !== p.id);
         renderPartidasList();
       });
 
       row.querySelectorAll('.partida-input').forEach(inputEl => {
+        const field = inputEl.dataset.field;
         inputEl.addEventListener('input', () => {
-          const field = inputEl.dataset.field;
           if (field === 'cantidad'){
             const n = parseInt(inputEl.value, 10);
             p.cantidad = Number.isFinite(n) && n > 0 ? n : 1;
           } else if (field === 'precioUnitario'){
-            const n = parseFloat(inputEl.value);
-            p.precioUnitario = Number.isFinite(n) && n >= 0 ? n : 0;
+            p.precioUnitario = parseMilesInput(inputEl.value);
           } else if (field === 'tiempoEntrega'){
             inputEl.value = inputEl.value.replace(/[^0-9-]/g, '');
             p.tiempoEntrega = inputEl.value;
@@ -1948,11 +1631,27 @@ Responde ÚNICAMENTE con un JSON con esta forma exacta. Usa null en los campos q
           row.querySelector('.partida-subtotal').textContent = mxn.format(partidaSubtotal(p));
           updatePartidasTotal();
         });
+        if (field === 'precioUnitario'){
+          // Reformatea con comas/2 decimales al salir del campo — mientras
+          // escribe se deja el número "crudo" para no pelear con el cursor.
+          inputEl.addEventListener('blur', () => { inputEl.value = formatMiles(p.precioUnitario); });
+        }
       });
     });
 
     updatePartidasTotal();
     fitPrefixPadding();
+  }
+
+  // Guarda los valores actuales del formulario de la pieza (todas las
+  // dimensiones, la unidad de diámetro y el ajuste de precio si había
+  // uno) para poder restaurarlos exactamente con "Editar".
+  function snapshotPieza(){
+    const snap = {};
+    fieldIds.forEach(id => { snap[id] = inputs[id].value; });
+    snap.diameterUnit = diameterUnit;
+    snap.priceOverride = priceOverride;
+    return snap;
   }
 
   btnAgregarPartida.addEventListener('click', () => {
@@ -1970,8 +1669,9 @@ Responde ÚNICAMENTE con un JSON con esta forma exacta. Usa null en los campos q
       id: 'p' + (partidaIdSeq++),
       descripcion,
       cantidad,
-      precioUnitario: effectivePrice(),
+      precioUnitario: Math.round(effectivePrice() * 100) / 100,
       tiempoEntrega,
+      piezaSnapshot: snapshotPieza(),
     });
     renderPartidasList();
 
@@ -1982,6 +1682,37 @@ Responde ÚNICAMENTE con un JSON con esta forma exacta. Usa null en los campos q
     partidaCantidadInput.value = '';
     partidaTiempoEntregaInput.value = '';
   });
+
+  // "Editar" regresa los datos de esa pieza (dimensiones, unidad, ajuste
+  // de precio) al formulario de arriba, recalcula, y quita la partida de
+  // la lista mientras se edita — se vuelve a agregar con el botón normal.
+  function editarPartida(p){
+    const snap = p.piezaSnapshot;
+    if (snap){
+      if (snap.diameterUnit && snap.diameterUnit !== diameterUnit) setDiameterUnit(snap.diameterUnit);
+      fieldIds.forEach(id => {
+        inputs[id].value = (snap[id] !== undefined && snap[id] !== null) ? snap[id] : (id === 'horasExtra' ? '0' : '');
+      });
+      clearFieldErrors();
+      form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      if (snap.priceOverride !== null && snap.priceOverride !== undefined){
+        priceOverride = snap.priceOverride;
+        document.getElementById('precioAjustado').value = priceOverride;
+        refreshPriceDisplay();
+      }
+    }
+
+    partidaDescripcionInput.value = p.descripcion;
+    partidaCantidadInput.value = p.cantidad;
+    partidaTiempoEntregaInput.value = p.tiempoEntrega;
+    addPartidaNote.textContent = '';
+
+    partidas = partidas.filter(x => x.id !== p.id);
+    renderPartidasList();
+
+    const resultsPanelEl = document.querySelector('.results-panel');
+    if (resultsPanelEl) resultsPanelEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
   function formatFechaParaPdf(isoDate){
     const parts = (isoDate || '').split('-');
