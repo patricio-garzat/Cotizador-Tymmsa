@@ -615,6 +615,30 @@
     grid-template-columns: 1fr 1fr;
     gap: 14px;
   }
+  /* Campo de tiempo de entrega + selector de unidad (días/semanas) lado a
+     lado — el selector se estira a la misma altura que el input. */
+  .entrega-row{ display:flex; gap: 8px; }
+  .entrega-row .field{ flex: 1 1 70px; min-width: 0; }
+  .unidad-select{
+    flex: 0 0 auto;
+    min-width: 96px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-input);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 0 10px;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+  }
+  .unidad-select:focus{
+    outline: none;
+    border-color: var(--accent);
+    background: var(--surface);
+    box-shadow: 0 0 0 4px var(--accent-ring);
+  }
   .btn-add-partida{
     appearance:none;
     background: var(--accent-soft);
@@ -999,9 +1023,12 @@
             </div>
             <div class="other-field">
               <label for="partidaTiempoEntrega">Tiempo de entrega</label>
-              <div class="field with-unit">
-                <input type="text" inputmode="numeric" id="partidaTiempoEntrega" placeholder="3-4">
-                <span class="unit">Días</span>
+              <div class="entrega-row">
+                <div class="field"><input type="text" inputmode="numeric" id="partidaTiempoEntrega" placeholder="3-4"></div>
+                <select class="unidad-select" id="partidaTiempoEntregaUnidad">
+                  <option value="dias">Días</option>
+                  <option value="semanas">Semanas</option>
+                </select>
               </div>
             </div>
           </div>
@@ -1550,6 +1577,7 @@ const MaquinadoFormulas = {
   const partidaDescripcionInput = document.getElementById('partidaDescripcion');
   const partidaCantidadInput = document.getElementById('partidaCantidad');
   const partidaTiempoEntregaInput = document.getElementById('partidaTiempoEntrega');
+  const partidaTiempoEntregaUnidadSelect = document.getElementById('partidaTiempoEntregaUnidad');
   const btnAgregarPartida = document.getElementById('btnAgregarPartida');
   const addPartidaNote = document.getElementById('addPartidaNote');
   const partidasPanel = document.getElementById('partidasPanel');
@@ -1558,10 +1586,31 @@ const MaquinadoFormulas = {
   const partidasPluralSEl = document.getElementById('partidasPluralS');
   const partidasTotalValueEl = document.getElementById('partidasTotalValue');
 
-  // Sólo dígitos y guiones (ej. "3" o "3-4"); "Días" ya está fijo en el sufijo
+  // Singular sólo cuando el valor escrito es exactamente "1" (un día, una
+  // semana); cualquier otro número o rango ("3", "3-4", "0") va en plural.
+  function unidadEntregaLabel(unidad, valorStr){
+    const singular = String(valorStr || '').trim() === '1';
+    if (unidad === 'semanas') return singular ? 'Semana' : 'Semanas';
+    return singular ? 'Día' : 'Días';
+  }
+  // Actualiza el texto de las opciones del <select> (lo que se ve es el
+  // texto de la opción elegida, así que basta con reescribirlo) para que
+  // singular/plural se ajuste solo mientras el usuario escribe el número.
+  function refreshEntregaUnidadOptions(selectEl, valorStr){
+    if (!selectEl) return;
+    const diasOpt = selectEl.querySelector('option[value="dias"]');
+    const semanasOpt = selectEl.querySelector('option[value="semanas"]');
+    if (diasOpt) diasOpt.textContent = unidadEntregaLabel('dias', valorStr);
+    if (semanasOpt) semanasOpt.textContent = unidadEntregaLabel('semanas', valorStr);
+  }
+
+  // Sólo dígitos y guiones (ej. "3" o "3-4"); la unidad (Días/Semanas) se
+  // elige aparte y se pluraliza sola.
   partidaTiempoEntregaInput.addEventListener('input', () => {
     partidaTiempoEntregaInput.value = partidaTiempoEntregaInput.value.replace(/[^0-9-]/g, '');
+    refreshEntregaUnidadOptions(partidaTiempoEntregaUnidadSelect, partidaTiempoEntregaInput.value);
   });
+  refreshEntregaUnidadOptions(partidaTiempoEntregaUnidadSelect, partidaTiempoEntregaInput.value);
 
   function partidaSubtotal(p){ return p.cantidad * p.precioUnitario; }
   function partidasGrandTotal(){ return partidas.reduce((sum, p) => sum + partidaSubtotal(p), 0); }
@@ -1619,7 +1668,13 @@ const MaquinadoFormulas = {
           </div>
           <div class="other-field">
             <label>Tiempo de entrega</label>
-            <div class="field with-unit"><input type="text" inputmode="numeric" class="partida-input" data-field="tiempoEntrega" value="${escapeAttr(p.tiempoEntrega)}"><span class="unit">Días</span></div>
+            <div class="entrega-row">
+              <div class="field"><input type="text" inputmode="numeric" class="partida-input" data-field="tiempoEntrega" value="${escapeAttr(p.tiempoEntrega)}"></div>
+              <select class="unidad-select" data-field="tiempoEntregaUnidad">
+                <option value="dias">Días</option>
+                <option value="semanas">Semanas</option>
+              </select>
+            </div>
           </div>
         </div>
       `;
@@ -1629,6 +1684,13 @@ const MaquinadoFormulas = {
       row.querySelector('.partida-remove').addEventListener('click', () => {
         partidas = partidas.filter(x => x.id !== p.id);
         renderPartidasList();
+      });
+
+      const entregaUnidadSelect = row.querySelector('[data-field="tiempoEntregaUnidad"]');
+      entregaUnidadSelect.value = p.tiempoEntregaUnidad === 'semanas' ? 'semanas' : 'dias';
+      refreshEntregaUnidadOptions(entregaUnidadSelect, p.tiempoEntrega);
+      entregaUnidadSelect.addEventListener('change', () => {
+        p.tiempoEntregaUnidad = entregaUnidadSelect.value;
       });
 
       row.querySelectorAll('.partida-input').forEach(inputEl => {
@@ -1642,6 +1704,7 @@ const MaquinadoFormulas = {
           } else if (field === 'tiempoEntrega'){
             inputEl.value = inputEl.value.replace(/[^0-9-]/g, '');
             p.tiempoEntrega = inputEl.value;
+            refreshEntregaUnidadOptions(entregaUnidadSelect, inputEl.value);
           } else {
             p[field] = inputEl.value;
           }
@@ -1681,6 +1744,7 @@ const MaquinadoFormulas = {
     const cantidadRaw = parseInt(partidaCantidadInput.value, 10);
     const cantidad = Number.isFinite(cantidadRaw) && cantidadRaw > 0 ? cantidadRaw : 1;
     const tiempoEntrega = (partidaTiempoEntregaInput.value || '').trim() || '3-4';
+    const tiempoEntregaUnidad = partidaTiempoEntregaUnidadSelect.value === 'semanas' ? 'semanas' : 'dias';
 
     partidas.push({
       id: 'p' + (partidaIdSeq++),
@@ -1688,6 +1752,7 @@ const MaquinadoFormulas = {
       cantidad,
       precioUnitario: Math.round(effectivePrice() * 100) / 100,
       tiempoEntrega,
+      tiempoEntregaUnidad,
       piezaSnapshot: snapshotPieza(),
     });
     renderPartidasList();
@@ -1698,6 +1763,8 @@ const MaquinadoFormulas = {
     partidaDescripcionInput.value = '';
     partidaCantidadInput.value = '';
     partidaTiempoEntregaInput.value = '';
+    partidaTiempoEntregaUnidadSelect.value = 'dias';
+    refreshEntregaUnidadOptions(partidaTiempoEntregaUnidadSelect, '');
   });
 
   // "Editar" regresa los datos de esa pieza (dimensiones, unidad, ajuste
@@ -1722,6 +1789,8 @@ const MaquinadoFormulas = {
     partidaDescripcionInput.value = p.descripcion;
     partidaCantidadInput.value = p.cantidad;
     partidaTiempoEntregaInput.value = p.tiempoEntrega;
+    partidaTiempoEntregaUnidadSelect.value = p.tiempoEntregaUnidad === 'semanas' ? 'semanas' : 'dias';
+    refreshEntregaUnidadOptions(partidaTiempoEntregaUnidadSelect, p.tiempoEntrega);
     addPartidaNote.textContent = '';
 
     partidas = partidas.filter(x => x.id !== p.id);
@@ -1889,11 +1958,16 @@ const MaquinadoFormulas = {
     // Con una sola partida, "Tiempo de entrega" va en una línea, igual que
     // el formato de una cotización simple de Tymmsa. Con dos o más, se
     // desglosa por partida ("Partida 1: …", "Partida 2: …"), igual que en
-    // sus cotizaciones reales con varias partidas.
-    const entregaTexto = (te) => (te || '3-4').replace(/\s*-\s*/g, ' - ') + ' Días';
+    // sus cotizaciones reales con varias partidas. La unidad (Días/Semanas)
+    // se pluraliza sola: singular sólo cuando el valor es exactamente "1".
+    const entregaTexto = (te, unidad) => {
+      const valor = (te || '3-4').trim();
+      return valor.replace(/\s*-\s*/g, ' - ') + ' ' + unidadEntregaLabel(unidad, valor);
+    };
     if (partidas.length <= 1){
       const te = partidas.length === 1 ? partidas[0].tiempoEntrega : '3-4';
-      doc.text('•  Tiempo de entrega: ' + entregaTexto(te), marginX, y); y += 13;
+      const unidad = partidas.length === 1 ? partidas[0].tiempoEntregaUnidad : 'dias';
+      doc.text('•  Tiempo de entrega: ' + entregaTexto(te, unidad), marginX, y); y += 13;
     } else {
       doc.text('•  Tiempo de entrega:', marginX, y); y += 13;
       partidas.forEach((p, idx) => {
@@ -1902,7 +1976,7 @@ const MaquinadoFormulas = {
         doc.text(label, marginX, y);
         const labelW = doc.getTextWidth(label);
         doc.setFont('Calibri', 'normal');
-        doc.text(entregaTexto(p.tiempoEntrega), marginX + labelW, y);
+        doc.text(entregaTexto(p.tiempoEntrega, p.tiempoEntregaUnidad), marginX + labelW, y);
         y += 13;
       });
     }
