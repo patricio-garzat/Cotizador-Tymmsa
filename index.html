@@ -335,6 +335,16 @@
     background: var(--surface);
     box-shadow: 0 0 0 4px var(--accent-ring);
   }
+  /* iOS dibuja el selector de fecha nativo con su propia métrica interna,
+     que no siempre respeta el padding/line-height igual que un input de
+     texto — esto lo normaliza para que quede del mismo tamaño que los
+     demás campos. */
+  .field input[type="date"]{
+    -webkit-appearance: none;
+    appearance: none;
+    min-height: 46px;
+    line-height: normal;
+  }
   .field .unit{
     position:absolute;
     right: 12px;
@@ -759,6 +769,10 @@
     .dim-head{ font-size: 10px; }
     .field input{ padding: 11px 26px 11px 10px; font-size: 14px; }
     .field .unit{ right: 8px; font-size: 10.5px; }
+    /* 16px mínimo evita que Safari en iOS haga zoom automático al enfocar
+       el campo (y con menos de 16px, el selector de fecha nativo se ve
+       chico/desalineado frente a los demás campos). */
+    .field input[type="date"]{ font-size: 16px; padding: 11px 10px; }
 
     .headline.time .value{ font-size: 38px; }
     .headline.price .value{ font-size: 40px; }
