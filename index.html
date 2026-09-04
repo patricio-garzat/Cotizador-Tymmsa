@@ -146,11 +146,12 @@
   .brand-logo svg{ display:block; width:100%; height:auto; }
   .brand-mark .tagline{
     font-family: var(--font-display);
-    font-size: 15px;
-    font-weight: 600;
+    font-size: 19px;
+    font-weight: 700;
     color: var(--text);
-    letter-spacing: -0.005em;
+    letter-spacing: -0.01em;
     text-align: center;
+    width: 100%;
   }
   .topbar-actions{ display:flex; align-items:center; gap: 10px; }
 
@@ -610,6 +611,44 @@
     letter-spacing: 0.02em;
     color: var(--text-muted);
   }
+  /* Recuadro de descripción — más alto que un input normal para poder
+     leer el texto completo mientras se escribe (el prefijo va como
+     renglón fijo arriba, no encimado, porque con varias líneas ya no
+     cabe centrado verticalmente). */
+  .desc-field{
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-input);
+    padding: 10px 14px 12px;
+    transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+  }
+  .desc-field:focus-within{
+    border-color: var(--accent);
+    background: var(--surface);
+    box-shadow: 0 0 0 4px var(--accent-ring);
+  }
+  .desc-prefix{
+    display:block;
+    font-family: var(--font-mono);
+    font-size: 15px;
+    color: var(--text-faint);
+    margin-bottom: 4px;
+  }
+  .desc-field textarea{
+    display:block;
+    width:100%;
+    min-height: 6.6em;
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: vertical;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 15px;
+    line-height: 1.45;
+    padding: 0;
+  }
+  .desc-field textarea::placeholder{ color: var(--text-faint); font-family: var(--font-body); }
   .add-partida-grid{
     display:grid;
     grid-template-columns: 1fr 1fr;
@@ -1010,9 +1049,9 @@
           <div class="add-partida-title">Agregar esta pieza a la cotización</div>
           <div class="other-field">
             <label for="partidaDescripcion">Descripción</label>
-            <div class="field with-prefix">
-              <span class="prefix">Servicio de Maquinado -</span>
-              <input type="text" id="partidaDescripcion" placeholder="de OP: 000000, maquinado según instrucción.">
+            <div class="desc-field">
+              <span class="desc-prefix">Servicio de Maquinado -</span>
+              <textarea id="partidaDescripcion" rows="3" placeholder="de OP: 000000, maquinado según instrucción."></textarea>
             </div>
           </div>
           <div class="add-partida-grid">
@@ -1728,9 +1767,9 @@ const MaquinadoFormulas = {
           <button type="button" class="partida-edit">Editar</button>
           <button type="button" class="partida-remove">Quitar</button>
         </div>
-        <div class="field with-prefix partida-desc">
-          <span class="prefix">Servicio de Maquinado -</span>
-          <input type="text" class="partida-input" data-field="descripcion" value="${escapeAttr(p.descripcion)}">
+        <div class="desc-field partida-desc">
+          <span class="desc-prefix">Servicio de Maquinado -</span>
+          <textarea class="partida-input" data-field="descripcion" rows="3">${escapeAttr(p.descripcion)}</textarea>
         </div>
         <div class="other-grid partida-meta-grid">
           <div class="other-field">
