@@ -1129,8 +1129,8 @@ const MaquinadoFormulas = {
 
   // ---- Constantes de proceso — AJUSTAR a los valores reales de Tymmsa ----
   INCH_TO_MM: 25.4,           // conversión de pulgadas a milímetros (no es un supuesto, es exacto)
-  PASS_DEPTH_MM: 1.5,         // profundidad de corte por pasada (mm) — SUPUESTO
-  AVANCE_MM_POR_REV: 0.18,    // Av de la fórmula: avance por revolución (mm/rev) — SUPUESTO
+  PASS_DEPTH_MM: 6,           // profundidad de corte por pasada (mm) — SUPUESTO, calibrado para desbaste de piezas grandes (antes 1.5mm, valor de acabado fino que inflaba muchísimo el número de pasadas)
+  AVANCE_MM_POR_REV: 0.4,     // Av de la fórmula: avance por revolución (mm/rev) — SUPUESTO, calibrado para desbaste (antes 0.18mm/rev)
   OTHER_TIME_FACTOR: 0.08,    // tiempo adicional (medición, cambios de herramienta) como % del corte — SUPUESTO
   SETUP_MIN_PER_KG: 0.15,     // min de montaje/manejo por kg de pieza — SUPUESTO
 
