@@ -885,6 +885,13 @@
             <button type="button" class="unit-btn" id="unitBtnMm" data-unit="mm">mm</button>
           </span>
         </div>
+        <div class="unit-toggle-row">
+          <span class="unit-toggle-label">Unidades de Altura</span>
+          <span class="unit-toggle" id="alturaUnitToggle" role="group" aria-label="Unidades de altura">
+            <button type="button" class="unit-btn" id="unitBtnAlturaIn" data-unit="in">in</button>
+            <button type="button" class="unit-btn active" id="unitBtnAlturaMm" data-unit="mm">mm</button>
+          </span>
+        </div>
 
         <div class="dim-grid">
           <div class="dim-head blank"></div>
@@ -911,7 +918,7 @@
             <span class="unit">in</span>
           </div>
 
-          <div class="dim-label">Alcance<small>Longitud</small></div>
+          <div class="dim-label">Altura<small>Alcance</small></div>
           <div class="field">
             <input type="number" inputmode="decimal" step="any" min="0" id="largoInicial" placeholder="0" data-field="largoInicial">
             <span class="unit">mm</span>
@@ -922,14 +929,7 @@
           </div>
         </div>
 
-        <div class="other-grid">
-          <div class="other-field">
-            <label for="peso">Peso de la pieza</label>
-            <div class="field with-unit">
-              <input type="number" inputmode="decimal" step="any" min="0" id="peso" placeholder="0" data-field="peso">
-              <span class="unit">kg</span>
-            </div>
-          </div>
+        <div class="other-grid" style="grid-template-columns: 1fr 1fr;">
           <div class="other-field">
             <label for="rpm">RPM</label>
             <div class="field">
@@ -1000,8 +1000,7 @@
         <div class="breakdown-list">
           <div class="breakdown-row"><span class="k">Maquinado exterior</span><span class="v" id="outExt">—</span></div>
           <div class="breakdown-row"><span class="k">Maquinado interior</span><span class="v" id="outInt">—</span></div>
-          <div class="breakdown-row"><span class="k">Refrentado / alcance</span><span class="v" id="outFace">—</span></div>
-          <div class="breakdown-row"><span class="k">Otros (montaje, medición)</span><span class="v" id="outOther">—</span></div>
+          <div class="breakdown-row"><span class="k">Altura</span><span class="v" id="outFace">—</span></div>
           <div class="breakdown-row"><span class="k">Horas extra (manual)</span><span class="v" id="outExtra">—</span></div>
           <div class="breakdown-row"><span class="k">Costo por hora</span><span class="v" id="outRate">—</span></div>
           <div class="breakdown-row total"><span class="k">Tiempo total</span><span class="v" id="outTotalTime2">—</span></div>
@@ -1064,7 +1063,7 @@
         <label for="folio">Folio de cotización</label>
         <div class="field with-prefix">
           <span class="prefix">TY-</span>
-          <input type="text" inputmode="numeric" id="folio" placeholder="6110">
+          <input type="text" inputmode="numeric" id="folio" placeholder="0000">
         </div>
       </div>
       <div class="other-field">
@@ -1109,92 +1108,125 @@
    Toda la lógica de cálculo vive EXCLUSIVAMENTE en este objeto.
    Nada fuera de este bloque debe conocer los detalles del cálculo.
 
-   Unidades de entrada: ID/OD en pulgadas (in), Alcance en mm,
-   Peso en kg. Internamente el módulo convierte ID/OD a mm para
-   que la geometría (radio a remover, mm) y el avance (mm/min)
-   trabajen en el mismo sistema — ver INCH_TO_MM.
+   Fórmulas reales dadas por Tymmsa. Todas las medidas van en PULGADAS,
+   convertidas a milésimas donde se indica.
 
-   El tiempo de corte (Tc) usa la fórmula real de torneado/fresado que
-   nos dio Tymmsa:
+     TcI = (Lc(milésimas) / Av) × (1/RPM)
+       Tiempo de corte de UNA pasada a lo largo de la altura (min).
+       Lc = altura de la forja, convertida a milésimas. Se usa igual
+       para el diámetro interior y el exterior — lo que cambia entre
+       ambos es cuántas veces se repite (ver CID/COD).
 
-       Tc = Lc / (Av × RPM)
+     TcD = (((OD forja − ID forja) / 2)(milésimas) / Av) × (1/RPM)
+       Tiempo de corte de UNA pasada de refrentado/altura (min). Aquí
+       también se convierte a milésimas, igual que en TcI.
 
-   Tc: tiempo de corte de una pasada (min) · Lc: longitud de corte (mm)
-   Av: avance (mm/rev) · RPM: revoluciones por minuto — ver "tiempoDeCorte"
-   más abajo. Los demás valores (Av, profundidad de pasada, tiempo de
-   montaje, % de "otros") siguen siendo SUPUESTOS de arranque — hay que
-   sustituirlos por los reales de Tymmsa en las constantes de abajo.
+     CID = ((ID final − ID forja) / 2) × 10   → pasadas de diám. interior
+     COD = ((OD forja − OD final) / 2) × 10   → pasadas de diám. exterior
+     CH  = (altura forja − altura final) × 10 → pasadas de altura
+     Las tres se REDONDEAN al entero más cercano (2.835→3, 4.645→5).
+
+   REDONDEO A NÚMEROS CERRADOS (regla de Tymmsa, para que el cálculo a
+   mano sea práctico), en DOS pasos:
+
+   1) TcI y TcD, en minutos, se redondean HACIA ARRIBA al múltiplo de 5
+      más cercano (322.23min→325min; 141min→145min; si ya cae en un
+      múltiplo de 5 —40, 45— se queda igual).
+
+   2) Ya multiplicado por la cantidad de cortes (CID/COD/CH) y
+      convertido a horas, CADA UNO de los tres tiempos (interior,
+      exterior, altura) se redondea HACIA ARRIBA por separado al
+      próximo múltiplo de 30 minutos = 0.5h (3.2h→3.5h; 3.7h→4.0h).
+
+   Esas horas (ya en pasos de 0.5h) se suman entre sí, más las horas
+   extra de maniobras, antes de multiplicar por el precio/hora.
+
+   RPM lo captura el usuario en el formulario (no es una constante).
    ================================================================ */
 const MaquinadoFormulas = {
 
-  // ---- Constantes de proceso — AJUSTAR a los valores reales de Tymmsa ----
-  INCH_TO_MM: 25.4,           // conversión de pulgadas a milímetros (no es un supuesto, es exacto)
-  PASS_DEPTH_MM: 6,           // profundidad de corte por pasada (mm) — SUPUESTO, calibrado para desbaste de piezas grandes (antes 1.5mm, valor de acabado fino que inflaba muchísimo el número de pasadas)
-  AVANCE_MM_POR_REV: 0.4,     // Av de la fórmula: avance por revolución (mm/rev) — SUPUESTO, calibrado para desbaste (antes 0.18mm/rev)
-  OTHER_TIME_FACTOR: 0.08,    // tiempo adicional (medición, cambios de herramienta) como % del corte — SUPUESTO
-  SETUP_MIN_PER_KG: 0.15,     // min de montaje/manejo por kg de pieza — SUPUESTO
+  // ---- Constantes de proceso — dadas por Tymmsa ----
+  INCH_TO_MM: 25.4,            // conversión de pulgadas a milímetros (exacta, no es un supuesto)
+  AVANCE_MILESIMAS: 20,        // Av: avance, siempre 20 (milésimas de pulgada por revolución)
+  MILESIMAS_POR_PULGADA: 1000, // para convertir Lc/radio de pulgadas a milésimas antes de dividir entre Av
+  CORTES_POR_PULGADA: 10,      // el "× 10" de CID/COD/CH
+  TC_REDONDEO_MINUTOS: 5,      // TcI y TcD (en minutos) se redondean hacia arriba a este múltiplo
+  HORA_FINAL_REDONDEO: 0.5,    // cada tiempo final por dimensión se redondea hacia arriba a esta fracción de hora
 
-  inToMm(pulgadas){ return pulgadas * this.INCH_TO_MM; },
-
-  // Material a remover (radios y longitud), siempre en mm
-  materialARemover(inputs){
-    const odI = this.inToMm(inputs.odInicial), odF = this.inToMm(inputs.odFinal);
-    const idI = this.inToMm(inputs.idInicial), idF = this.inToMm(inputs.idFinal);
-    return {
-      exterior: Math.max(0, (odI - odF) / 2),
-      interior: Math.max(0, (idF - idI) / 2),
-      alcance:  Math.max(0, inputs.largoInicial - inputs.largoFinal),
-    };
+  // Tc de una pasada a lo largo de la altura (TcI), en MINUTOS, ya
+  // redondeado hacia arriba al múltiplo de 5 más cercano.
+  //   TcI = (Lc(milésimas) / Av) × (1/RPM)
+  tiempoCorteLongitudinal(alturaPulg, rpm){
+    if (rpm <= 0) return 0;
+    const LcMil = alturaPulg * this.MILESIMAS_POR_PULGADA;
+    const minutos = (LcMil / this.AVANCE_MILESIMAS) * (1 / rpm);
+    return Math.ceil(minutos / this.TC_REDONDEO_MINUTOS) * this.TC_REDONDEO_MINUTOS;
   },
 
-  numeroDePasadas(remocionMm){
-    if (remocionMm <= 0) return 0;
-    return Math.ceil(remocionMm / this.PASS_DEPTH_MM);
+  // Tc de una pasada de refrentado/diametral (TcD), en MINUTOS, ya
+  // redondeado hacia arriba al múltiplo de 5 más cercano — mismo
+  // redondeo que TcI.
+  //   TcD = (((OD forja − ID forja)/2)(milésimas) / Av) × (1/RPM)
+  tiempoCorteDiametral(odForjaPulg, idForjaPulg, rpm){
+    if (rpm <= 0) return 0;
+    const radioForjaPulg = Math.max(0, (odForjaPulg - idForjaPulg) / 2);
+    const LcMil = radioForjaPulg * this.MILESIMAS_POR_PULGADA;
+    const minutos = (LcMil / this.AVANCE_MILESIMAS) * (1 / rpm);
+    return Math.ceil(minutos / this.TC_REDONDEO_MINUTOS) * this.TC_REDONDEO_MINUTOS;
   },
 
-  // ---- FÓRMULA REAL (proporcionada por Tymmsa) ----
-  //   Tc = Lc / (Av × RPM)
-  // Tiempo de corte de UNA pasada, en minutos. Lc es lo que recorre la
-  // herramienta en esa pasada (a lo largo de la pieza, o el radio de la
-  // cara en un refrentado); Av sale de AVANCE_MM_POR_REV.
-  tiempoDeCorte(Lc, rpm){
-    const Av = this.AVANCE_MM_POR_REV;
-    if (Av <= 0 || rpm <= 0) return 0;
-    return Lc / (Av * rpm);
+  // CID = round(((ID final − ID forja) / 2) × 10)
+  cortesInterior(idForjaPulg, idFinalPulg){
+    const x = Math.max(0, idFinalPulg - idForjaPulg);
+    return Math.round((x / 2) * this.CORTES_POR_PULGADA);
+  },
+  // COD = round(((OD forja − OD final) / 2) × 10)
+  cortesExterior(odForjaPulg, odFinalPulg){
+    const y = Math.max(0, odForjaPulg - odFinalPulg);
+    return Math.round((y / 2) * this.CORTES_POR_PULGADA);
+  },
+  // CH = round((altura forja − altura final) × 10)
+  cortesAltura(alturaForjaPulg, alturaFinalPulg){
+    const z = Math.max(0, alturaForjaPulg - alturaFinalPulg);
+    return Math.round(z * this.CORTES_POR_PULGADA);
   },
 
-  // Tiempos de corte, en minutos. Cada operación (exterior, interior,
-  // refrentado) puede necesitar varias pasadas para remover todo el
-  // material — el tiempo de la operación es Tc de una pasada × número de
-  // pasadas (numeroDePasadas, arriba).
+  // Redondea horas hacia arriba al próximo múltiplo de HORA_FINAL_REDONDEO
+  // (0.5h = 30min): 3.2h→3.5h, 3.7h→4.0h.
+  redondearHoraFinal(horas){
+    return Math.ceil(horas / this.HORA_FINAL_REDONDEO) * this.HORA_FINAL_REDONDEO;
+  },
+
+  // Tiempos de corte, por dimensión, en pasos de 0.5h (cada uno
+  // redondeado hacia arriba por separado antes de sumar, y ya usando
+  // TcI/TcD redondeados a múltiplos de 5 minutos). inputs.* siempre
+  // llegan en PULGADAS aquí (la interfaz ya convirtió de mm si hacía
+  // falta — ver readValues).
   calcularTiempos(inputs){
-    const remocion = this.materialARemover(inputs);
-    const odFinalMm = this.inToMm(inputs.odFinal);
+    const rpm = inputs.rpm;
+    const tcIMin = this.tiempoCorteLongitudinal(inputs.largoInicial, rpm);
+    const tcDMin = this.tiempoCorteDiametral(inputs.odInicial, inputs.idInicial, rpm);
 
-    const pasadasExt = this.numeroDePasadas(remocion.exterior);
-    const pasadasInt = this.numeroDePasadas(remocion.interior);
-    const pasadasFace = this.numeroDePasadas(remocion.alcance);
+    const cid = this.cortesInterior(inputs.idInicial, inputs.idFinal);
+    const cod = this.cortesExterior(inputs.odInicial, inputs.odFinal);
+    const ch = this.cortesAltura(inputs.largoInicial, inputs.largoFinal);
 
-    // Torneado exterior/interior: la herramienta recorre el largo de la
-    // pieza en cada pasada → Lc = largo inicial.
-    const minExterior = pasadasExt * this.tiempoDeCorte(inputs.largoInicial, inputs.rpm);
-    const minInterior = pasadasInt * this.tiempoDeCorte(inputs.largoInicial, inputs.rpm);
-    // Refrentado: la herramienta recorre el radio de la cara → Lc = OD final / 2.
-    const minRefrentado = pasadasFace * this.tiempoDeCorte(odFinalMm / 2, inputs.rpm);
+    const minInterior = cid * tcIMin;
+    const minExterior = cod * tcIMin;
+    const minAltura = ch * tcDMin;
 
-    const subtotalCorte = minExterior + minInterior + minRefrentado;
-    const minMontaje = inputs.peso * this.SETUP_MIN_PER_KG;
-    const minOtros = minMontaje + subtotalCorte * this.OTHER_TIME_FACTOR;
+    const hInterior = this.redondearHoraFinal(minInterior / 60);
+    const hExterior = this.redondearHoraFinal(minExterior / 60);
+    const hAltura = this.redondearHoraFinal(minAltura / 60);
 
-    const totalMin = subtotalCorte + minOtros;
+    const totalH = hInterior + hExterior + hAltura;
 
     return {
-      exteriorH: minExterior / 60,
-      interiorH: minInterior / 60,
-      refrentadoH: minRefrentado / 60,
-      otrosH: minOtros / 60,
-      totalH: totalMin / 60,
-      pasadas: { exterior: pasadasExt, interior: pasadasInt, refrentado: pasadasFace },
+      exteriorH: hExterior,
+      interiorH: hInterior,
+      alturaH: hAltura,
+      totalH,
+      cortes: { interior: cid, exterior: cod, altura: ch },
     };
   },
 
@@ -1203,9 +1235,9 @@ const MaquinadoFormulas = {
   },
 
   // Punto de entrada único usado por la interfaz.
-  // "horasExtra" es tiempo manual (montaje, ajuste, imprevistos) que el
-  // cotizador suma directo al total en pasos de 0.5 h — no forma parte
-  // de las fórmulas de corte y no se ve afectado si éstas cambian.
+  // "horasExtra" es tiempo manual (maniobras, montaje, imprevistos) que
+  // el cotizador suma directo al total en pasos de 0.5 h — no forma
+  // parte de las fórmulas de corte y no se ve afectado si éstas cambian.
   calcularCotizacion(inputs){
     const tiempos = this.calcularTiempos(inputs);
     const extraH = Math.max(0, inputs.horasExtra || 0);
@@ -1223,21 +1255,27 @@ const MaquinadoFormulas = {
    ================================================================ */
 (function(){
   const form = document.getElementById('quoteForm');
-  const fieldIds = ['idInicial','idFinal','odInicial','odFinal','largoInicial','largoFinal','peso','rpm','precioHora','horasExtra'];
+  const fieldIds = ['idInicial','idFinal','odInicial','odFinal','largoInicial','largoFinal','rpm','precioHora','horasExtra'];
   const inputs = Object.fromEntries(fieldIds.map(id => [id, document.getElementById(id)]));
   const formAlert = document.getElementById('formAlert');
   const sampleNote = document.getElementById('sampleNote');
   const resultsTag = document.getElementById('resultsTag');
   const EXTRA_STEP = 0.5;
   const DIAMETER_FIELD_IDS = ['idInicial','idFinal','odInicial','odFinal'];
+  const ALTURA_FIELD_IDS = ['largoInicial','largoFinal'];
   let diameterUnit = 'in';
+  let alturaUnit = 'mm';
 
+  // Cotización real de Tymmsa (forja ID 101" / OD 111" / H 12.8", pieza
+  // final ID 101.929" / OD 110.433" / H 11.811"). Con el redondeo a
+  // múltiplos de 5min/0.5h da 20.0 horas: interior 7h + exterior 4h +
+  // altura 6h = 17h de corte, + 3h de maniobras.
   const EJEMPLO = {
-    idInicial: 4.750, idFinal: 6.000,
-    odInicial: 13.500, odFinal: 12.000,
-    largoInicial: 260, largoFinal: 240,
-    peso: 185, rpm: 450, precioHora: 850,
-    horasExtra: 1,
+    idInicial: 101.000, idFinal: 101.929,
+    odInicial: 111.000, odFinal: 110.433,
+    largoInicial: 325.12, largoFinal: 299.9994,
+    rpm: 8, precioHora: 1000,
+    horasExtra: 3,
   };
 
   const mxn = new Intl.NumberFormat('es-MX', { style:'currency', currency:'MXN', minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1257,14 +1295,18 @@ const MaquinadoFormulas = {
     inputs[id].closest('.field, .stepper').classList.add('has-error');
   }
 
-  // Siempre entrega ID/OD en pulgadas a MaquinadoFormulas, sin importar en
-  // qué unidad esté escribiendo el usuario en ese momento — el módulo de
-  // fórmulas no necesita saber nada sobre el selector de unidades.
+  // Siempre entrega ID/OD y Altura en pulgadas a MaquinadoFormulas, sin
+  // importar en qué unidad esté escribiendo el usuario en ese momento —
+  // el módulo de fórmulas no necesita saber nada sobre los selectores
+  // de unidades.
   function readValues(){
     const v = {};
     fieldIds.forEach(id => { v[id] = inputs[id].value === '' ? NaN : parseFloat(inputs[id].value); });
     if (diameterUnit === 'mm'){
       DIAMETER_FIELD_IDS.forEach(id => { if (!Number.isNaN(v[id])) v[id] = v[id] / 25.4; });
+    }
+    if (alturaUnit === 'mm'){
+      ALTURA_FIELD_IDS.forEach(id => { if (!Number.isNaN(v[id])) v[id] = v[id] / 25.4; });
     }
     return v;
   }
@@ -1327,8 +1369,7 @@ const MaquinadoFormulas = {
 
     document.getElementById('outExt').textContent = fmtH(r.exteriorH);
     document.getElementById('outInt').textContent = fmtH(r.interiorH);
-    document.getElementById('outFace').textContent = fmtH(r.refrentadoH);
-    document.getElementById('outOther').textContent = fmtH(r.otrosH);
+    document.getElementById('outFace').textContent = fmtH(r.alturaH);
     document.getElementById('outExtra').textContent = fmtH(r.extraH);
     document.getElementById('outRate').textContent = `${mxn.format(v.precioHora)} / h`;
     document.getElementById('outTotalTime2').textContent = fmtH(r.totalH);
@@ -1409,6 +1450,7 @@ const MaquinadoFormulas = {
   function resetDimensionCalc(){
     fieldIds.forEach(id => { inputs[id].value = id === 'horasExtra' ? '0' : ''; });
     if (diameterUnit !== 'in') setDiameterUnit('in');
+    if (alturaUnit !== 'mm') setAlturaUnit('mm');
     clearFieldErrors();
     lastCosto = null;
     priceOverride = null;
@@ -1420,7 +1462,7 @@ const MaquinadoFormulas = {
     resultsTag.innerHTML = '<span class="dot"></span>Sin calcular';
     document.getElementById('outTotalTime').innerHTML = '— <span class="unit">horas</span>';
     document.getElementById('outFinalPrice').innerHTML = '— <span class="unit">MXN</span>';
-    ['outExt','outInt','outFace','outOther','outExtra','outRate','outTotalTime2'].forEach(id => {
+    ['outExt','outInt','outFace','outExtra','outRate','outTotalTime2'].forEach(id => {
       document.getElementById(id).textContent = '—';
     });
   }
@@ -1468,6 +1510,39 @@ const MaquinadoFormulas = {
 
   unitBtnIn.addEventListener('click', () => setDiameterUnit('in'));
   unitBtnMm.addEventListener('click', () => setDiameterUnit('mm'));
+
+  /* ================================================================
+     SELECTOR DE UNIDADES (Altura) — mm ⇄ in, independiente del de ID/OD.
+     ================================================================ */
+  const unitBtnAlturaIn = document.getElementById('unitBtnAlturaIn');
+  const unitBtnAlturaMm = document.getElementById('unitBtnAlturaMm');
+
+  function setAlturaUnit(unit){
+    if (unit === alturaUnit) return;
+    const factor = alturaUnit === 'in' && unit === 'mm' ? 25.4
+      : alturaUnit === 'mm' && unit === 'in' ? 1 / 25.4
+      : 1;
+    const decimals = unit === 'in' ? 3 : 1;
+
+    ALTURA_FIELD_IDS.forEach(id => {
+      const raw = inputs[id].value;
+      if (raw !== ''){
+        const num = parseFloat(raw);
+        if (Number.isFinite(num)) inputs[id].value = (num * factor).toFixed(decimals);
+      }
+      inputs[id].placeholder = unit === 'in' ? '0.000' : '0.0';
+      const unitEl = inputs[id].closest('.field').querySelector('.unit');
+      if (unitEl) unitEl.textContent = unit;
+    });
+
+    alturaUnit = unit;
+    unitBtnAlturaIn.classList.toggle('active', unit === 'in');
+    unitBtnAlturaMm.classList.toggle('active', unit === 'mm');
+    tryLiveRecalc();
+  }
+
+  unitBtnAlturaIn.addEventListener('click', () => setAlturaUnit('in'));
+  unitBtnAlturaMm.addEventListener('click', () => setAlturaUnit('mm'));
 
   // Recalcular en vivo si ya hay un resultado mostrado y el usuario ajusta
   // el precio/hora, las horas extra o cualquier otro campo.
@@ -1730,6 +1805,7 @@ const MaquinadoFormulas = {
     const snap = {};
     fieldIds.forEach(id => { snap[id] = inputs[id].value; });
     snap.diameterUnit = diameterUnit;
+    snap.alturaUnit = alturaUnit;
     snap.priceOverride = priceOverride;
     return snap;
   }
@@ -1774,6 +1850,7 @@ const MaquinadoFormulas = {
     const snap = p.piezaSnapshot;
     if (snap){
       if (snap.diameterUnit && snap.diameterUnit !== diameterUnit) setDiameterUnit(snap.diameterUnit);
+      if (snap.alturaUnit && snap.alturaUnit !== alturaUnit) setAlturaUnit(snap.alturaUnit);
       fieldIds.forEach(id => {
         inputs[id].value = (snap[id] !== undefined && snap[id] !== null) ? snap[id] : (id === 'horasExtra' ? '0' : '');
       });
@@ -2020,8 +2097,12 @@ const MaquinadoFormulas = {
     }
   });
 
-  // Estado inicial: cotización de ejemplo precargada y calculada
+  // Estado inicial: cotización de ejemplo precargada y calculada. Se
+  // recalcula con readValues() (no con EJEMPLO directo) para que pase
+  // por la misma conversión de unidades que cualquier cálculo normal —
+  // EJEMPLO está escrito en las unidades que muestran los toggles por
+  // default (ID/OD en in, Altura en mm), no ya convertido a pulgadas.
   loadValues(EJEMPLO);
-  renderResults(EJEMPLO);
+  renderResults(readValues());
 })();
 </script>
